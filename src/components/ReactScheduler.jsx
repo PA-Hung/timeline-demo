@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { DayPilot, DayPilotScheduler } from "@daypilot/daypilot-lite-react";
+import CurrentTimeIndicator from './CurrentTimeIndicator';
 import "../assets/themes/light.css";
 import "../assets/toolbar.css";
 import "../assets/modal.css";
@@ -7,12 +8,13 @@ import "../assets/modal.css";
 const ReactScheduler = () => {
   const [scheduler, setScheduler] = useState(null);
   const [events, setEvents] = useState([]);
-  const [startDate, setStartDate] = useState(DayPilot.Date.today().firstDayOfWeek().addDays(-2));
+  const [startDate, setStartDate] = useState(DayPilot.Date.today());
   const [days, setDays] = useState(14);
   const [viewMode, setViewMode] = useState("week");
   const [scale, setScale] = useState("Day"); // "Day" | "CellDuration"
   const [cellWidth, setCellWidth] = useState(120);
   const [theme, setTheme] = useState("scheduler_light");
+  const [isToday, setIsToday] = useState(true);
   
   const containerRef = useRef(null);
 
@@ -221,8 +223,42 @@ const ReactScheduler = () => {
 
   // Xử lý trước khi render row để style category
   const onBeforeRowHeaderRender = (args) => {
-    if (args.row.data.isCategory) {
-      args.row.cssClass = "category-row";
+    // Tô màu header cho category rows
+    if (isParentResource(args.row.id)) {
+      args.row.backColor = "#f5f5f5";
+      args.row.fontColor = "#333";
+      args.row.fontBold = true;
+    }
+  };
+
+  // Count unassigned bookings for a specific date
+  const getUnassignedBookingsForDate = (date) => {
+    const dayStart = new DayPilot.Date(date).getDatePart();
+    const dayEnd = dayStart.addDays(1);
+    
+    return events.filter(event => {
+      const eventStart = new DayPilot.Date(event.start);
+      const eventEnd = new DayPilot.Date(event.end);
+      
+      // Check if event has no resource (unassigned) and overlaps with this date
+      return !event.resource && eventStart < dayEnd && eventEnd > dayStart;
+    }).length;
+  };
+
+  // Customize time header rendering to add unassigned booking badge
+  const onBeforeTimeHeaderRender = (args) => {
+    // In Day view: level 0 is the day header (e.g., "Sunday 11/01")
+    // In Week/Month view: level 0 is also the day header (e.g., "Sun 11")
+    if (args.header.level === 0 || (viewMode === 'day' && args.header.level === 0)) {
+      const count = getUnassignedBookingsForDate(args.header.start);
+      if (count > 0) {
+        args.header.html = `
+          <div style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+            <span>${args.header.text}</span>
+            <span class="unassigned-badge">${count}</span>
+          </div>
+        `;
+      }
     }
   };
 
@@ -240,22 +276,14 @@ const ReactScheduler = () => {
   const scrollToToday = () => {
     const now = new DayPilot.Date();
     
-    // Logic fallback về ngày bắt đầu tùy view mode
-    if (viewMode === "day") {
-      setStartDate(now);
-      scheduler?.scrollTo(now);
-    } else if (viewMode === "week") {
-      // Tuần bắt đầu từ thứ 2 (hoặc tùy config, ở đây assuming firstDayOfWeek)
-      setStartDate(now.firstDayOfWeek());
-      scheduler?.scrollTo(now);
-    } else {
-      // Month
-      setStartDate(now.firstDayOfMonth());
-      scheduler?.scrollTo(now);
-    }
+    // Always set startDate to today for date picker display
+    setStartDate(now);
+    setIsToday(true);
+    scheduler?.scrollTo(now);
   };
 
   const navigatePrevious = () => {
+    setIsToday(false);
     if (viewMode === "day") {
       setStartDate(startDate.addDays(-1));
     } else if (viewMode === "week") {
@@ -266,6 +294,7 @@ const ReactScheduler = () => {
   };
 
   const navigateNext = () => {
+    setIsToday(false);
     if (viewMode === "day") {
       setStartDate(startDate.addDays(1));
     } else if (viewMode === "week") {
@@ -277,22 +306,18 @@ const ReactScheduler = () => {
 
   const changeViewMode = (mode) => {
     setViewMode(mode);
-    const today = DayPilot.Date.today();
 
     if (mode === "day") {
       setDays(1);
       setScale("CellDuration"); // Chuyển sang view theo giờ
-      setStartDate(today);
     } else if (mode === "week") {
       setDays(30); // Load 30 ngày để cho phép scroll
       setScale("Day");
-      setStartDate(today.firstDayOfWeek());
     } else {
       // Month
-      const daysInMonth = today.daysInMonth();
+      const daysInMonth = startDate.daysInMonth();
       setDays(daysInMonth);
       setScale("Day");
-      setStartDate(today.firstDayOfMonth());
     }
   };
 
@@ -319,6 +344,17 @@ const ReactScheduler = () => {
       { id: 12, text: "Hen Nguyen", source: "Trip", start: today.addDays(1), end: today.addDays(5), resource: "R8", backColor: "#4caf50", status: "Có khách" },
       { id: 13, text: "Le Xu Uyen Le", source: "Trip", start: today.addDays(0), end: today.addDays(3), resource: "R9", backColor: "#f0c000", status: "Đã đặt" },
       { id: 14, text: "Nguyen Thi Tuyet Mai", source: "Tera", start: today.addDays(4), end: today.addDays(7), resource: "R9", backColor: "#4caf50", status: "Có khách" },
+      
+      // Unassigned bookings (chưa gán phòng) - hardcode for dates 10, 11, 12
+      // Ngày 10/01 - 2 bookings
+      { id: 101, text: "Booking A - Chưa gán phòng", source: "Tera", start: today, end: today.addDays(1), resource: null, backColor: "#ff9800", status: "Chưa gán" },
+      { id: 102, text: "Booking B - Chưa gán phòng", source: "Trip", start: today, end: today.addDays(1), resource: null, backColor: "#ff9800", status: "Chưa gán" },
+      // Ngày 11/01 - 2 bookings
+      { id: 103, text: "Booking C - Chưa gán phòng", source: "Tera", start: today.addDays(1), end: today.addDays(2), resource: null, backColor: "#ff9800", status: "Chưa gán" },
+      { id: 104, text: "Booking D - Chưa gán phòng", source: "Trip", start: today.addDays(1), end: today.addDays(2), resource: null, backColor: "#ff9800", status: "Chưa gán" },
+      // Ngày 12/01 - 2 bookings
+      { id: 105, text: "Booking E - Chưa gán phòng", source: "Tera", start: today.addDays(2), end: today.addDays(3), resource: null, backColor: "#ff9800", status: "Chưa gán" },
+      { id: 106, text: "Booking F - Chưa gán phòng", source: "Trip", start: today.addDays(2), end: today.addDays(3), resource: null, backColor: "#ff9800", status: "Chưa gán" },
     ];
     setEvents(sampleEvents);
     // Tạo deep copy cho backup (DayPilot có thể mutate events state)
@@ -359,6 +395,27 @@ const ReactScheduler = () => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [viewMode, days]);
+
+  // Update current time label
+  useEffect(() => {
+    const updateTimeLabel = () => {
+      const nowHeader = document.querySelector('.scheduler_light_now_header');
+      if (nowHeader) {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        nowHeader.setAttribute('data-time', `${hours}:${minutes}`);
+      }
+    };
+
+    // Update immediately
+    updateTimeLabel();
+    
+    // Update every minute
+    const interval = setInterval(updateTimeLabel, 60000);
+    
+    return () => clearInterval(interval);
+  }, [scheduler]);
 
   return (
     <div className="scheduler-container" ref={containerRef}>
@@ -406,7 +463,7 @@ const ReactScheduler = () => {
         <div className="toolbar-center">
           <div className="view-mode-group">
             <button
-              className={`view-btn ${viewMode === 'today' ? 'active' : ''}`}
+              className={`view-btn ${isToday ? 'active' : ''}`}
               onClick={scrollToToday}
             >
               Hôm nay
@@ -448,7 +505,7 @@ const ReactScheduler = () => {
       </div>
 
       {/* Scheduler */}
-      <div className="scheduler-wrapper">
+      <div className="scheduler-wrapper" style={{ position: 'relative' }}>
         <DayPilotScheduler
           key={schedulerKey}
           scale={scale}
@@ -467,12 +524,14 @@ const ReactScheduler = () => {
           resources={resources}
           onBeforeEventRender={onBeforeEventRender}
           onBeforeRowHeaderRender={onBeforeRowHeaderRender}
+          onBeforeTimeHeaderRender={onBeforeTimeHeaderRender}
           onTimeRangeSelected={onTimeRangeSelected}
           onRowClick={onRowClick}
           controlRef={setScheduler}
           theme={theme}
           showCurrentTime={true}
           showCurrentTimeMode="Full"
+          cellDuration={60}
           eventMoveHandling={"Update"}
           eventResizeHandling={"Update"}
           onBeforeEventMove={(args) => {
@@ -562,6 +621,13 @@ const ReactScheduler = () => {
             setEvents(newEvents);
             eventsBackupRef.current = JSON.parse(JSON.stringify(newEvents));
           }}
+        />
+        <CurrentTimeIndicator 
+          scheduler={scheduler}
+          viewMode={viewMode}
+          startDate={startDate}
+          days={days}
+          cellWidth={cellWidth}
         />
       </div>
     </div>

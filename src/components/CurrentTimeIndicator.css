@@ -1,0 +1,37 @@
+.current-time-indicator {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 100;
+    pointer-events: none;
+}
+
+.current-time-label {
+    position: absolute;
+    top: 46px;
+    /* Position to center in 30px Studio row (accounting for header height) */
+    left: 50%;
+    /* Offset to the right of the line */
+    transform: translateY(-50%);
+    /* Center vertically only */
+    background-color: #ff9800;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+    z-index: 102;
+}
+
+.current-time-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1px;
+    background: none;
+    border-left: 1px dashed rgba(255, 152, 0, 0.6);
+    z-index: 101;
+}
