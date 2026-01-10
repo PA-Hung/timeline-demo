@@ -328,25 +328,37 @@ const ReactScheduler = () => {
     scheduler?.scrollTo(today);
   }, [scheduler]);
 
-  // Handle auto-fit for week view
+  // Handle auto-fit for week view and day view
   useEffect(() => {
     const handleResize = () => {
-      if (viewMode === "week" && containerRef.current) {
+      if (containerRef.current) {
         const containerWidth = containerRef.current.clientWidth;
         // 120 is rowHeaderWidth. Subtract extra for potential vertical scrollbar logic if needed
         const availableWidth = containerWidth - 120;
-        const newCellWidth = Math.floor(availableWidth / 7);
-        // Ensure not too small
-        setCellWidth(Math.max(50, newCellWidth));
-      } else {
-        setCellWidth(120); // Default fixed width for Day/Month
+
+        if (viewMode === "week") {
+            const newCellWidth = Math.floor(availableWidth / 7);
+            // Ensure not too small
+            setCellWidth(Math.max(50, newCellWidth));
+        } else if (viewMode === "day") {
+            // Day view: 24 hours fit to screen
+            const newCellWidth = Math.floor(availableWidth / 24);
+             // Ensure not too small
+            setCellWidth(Math.max(20, newCellWidth));
+        } else if (viewMode === "month") {
+             // Month view: fit all days to screen
+             const newCellWidth = Math.floor(availableWidth / days);
+             setCellWidth(Math.max(20, newCellWidth));
+        } else {
+             setCellWidth(120); 
+        }
       }
     };
 
     handleResize(); // Initial calc
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [viewMode]);
+  }, [viewMode, days]);
 
   return (
     <div className="scheduler-container" ref={containerRef}>
@@ -440,7 +452,10 @@ const ReactScheduler = () => {
         <DayPilotScheduler
           key={schedulerKey}
           scale={scale}
-          timeHeaders={[
+          timeHeaders={viewMode === "day" ? [
+            { groupBy: "Day", format: "dddd dd/MM" },
+            { groupBy: "Hour" }
+          ] : [
             { groupBy: "Day", format: "ddd dd" }
           ]}
           startDate={startDate}
