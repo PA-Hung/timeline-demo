@@ -446,7 +446,7 @@ const ReactScheduler = () => {
           startDate={startDate}
           days={days}
           cellWidth={cellWidth}
-          eventHeight={28}
+          eventHeight={30}
           rowHeaderWidth={120}
           events={events}
           resources={resources}

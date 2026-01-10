@@ -76,10 +76,18 @@
 
 /* Events */
 .scheduler_light_event {
-  border-radius: 3px;
+  border-radius: 50px;
+  /* Pill shape */
   box-shadow: none;
   transition: transform 0.15s ease;
   border: none !important;
+
+  /* Size and Spacing */
+  height: 24px !important;
+  /* Visible height updated to 24px */
+  margin-top: 3px !important;
+  /* Vertical centering: (30 - 24) / 2 */
+
   /* FORCE CENTER ALIGNMENT */
   display: flex !important;
   align-items: center !important;
@@ -93,11 +101,12 @@
 }
 
 /* Inner Text Wrapper - Force Lock Position & Center */
+/* Inner Text Wrapper - Force Lock Position & Center */
 .scheduler_light_event_inner,
-.scheduler_default_event_image
-
+.scheduler_default_event_image,
 /* Potential float class */
-  {
+.scheduler_light_event_float_inner,
+.scheduler_light_timeheader_float_inner {
   padding: 0 8px !important;
   font-size: 11px;
   font-weight: 500;
@@ -116,6 +125,26 @@
   /* Flexbox for inner content */
   display: flex !important;
   align-items: center !important;
+  height: 100% !important;
+  /* Ensure full height */
+}
+
+/* Ensure floating container itself has height if needed */
+.scheduler_light_event_float,
+.scheduler_light_timeheader_float {
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  background: transparent !important;
+  /* Avoid double background */
+}
+
+/* Header specific tweaks if needed */
+.scheduler_light_timeheader_float_inner {
+  justify-content: center !important;
+  /* Headers are usually centered */
+  background: #f8f9fa !important;
+  /* Match header background */
 }
 
 /* Event source styling */
