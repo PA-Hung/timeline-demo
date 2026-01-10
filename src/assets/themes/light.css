@@ -1,0 +1,219 @@
+/* DayPilot Light Theme - Hotel Booking Style */
+.scheduler_light_main {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 12px;
+}
+
+/* Time Header - Date display */
+.scheduler_light_timeheadergroup {
+  background: #f8f9fa;
+  color: #333;
+  font-weight: 600;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.scheduler_light_timeheadercol {
+  background: #fff;
+  color: #333;
+  font-size: 12px;
+  font-weight: 500;
+  border-right: 1px solid #eee;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scheduler_light_timeheadercol_inner {
+  padding: 8px 4px;
+}
+
+/* Row Header - Room names */
+.scheduler_light_rowheader {
+  background: #fff;
+  color: #333;
+  font-size: 12px;
+  border-bottom: 1px solid #eee;
+  border-right: 1px solid #e0e0e0;
+}
+
+.scheduler_light_rowheader_inner {
+  padding: 6px 8px;
+  display: flex;
+  align-items: center;
+}
+
+/* Group rows (categories) */
+.scheduler_light_rowheader[data-group="true"],
+.scheduler_light_rowheadergroup {
+  background: #f5f5f5;
+  font-weight: 600;
+  color: #333;
+}
+
+/* Tree expand/collapse icon */
+.scheduler_light_tree_image_expand,
+.scheduler_light_tree_image_collapse {
+  cursor: pointer;
+  margin-right: 4px;
+}
+
+/* Cells */
+.scheduler_light_cell {
+  background: #fff;
+  border-right: 1px solid #f0f0f0;
+  border-bottom: 1px solid #eee;
+}
+
+.scheduler_light_cell:hover {
+  background: rgba(25, 118, 210, 0.05);
+}
+
+/* Weekend cells */
+.scheduler_light_cell[data-weekend="true"] {
+  background: #fafafa;
+}
+
+/* Events */
+.scheduler_light_event {
+  border-radius: 3px;
+  box-shadow: none;
+  transition: transform 0.15s ease;
+  border: none !important;
+  /* FORCE CENTER ALIGNMENT */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  /* Align text to start, or center if preferred */
+}
+
+.scheduler_light_event:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Inner Text Wrapper - Force Lock Position & Center */
+.scheduler_light_event_inner,
+.scheduler_default_event_image
+
+/* Potential float class */
+  {
+  padding: 0 8px !important;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: normal !important;
+
+  /* Absolute centering override */
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+
+  /* Flexbox for inner content */
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Event source styling */
+.event-source {
+  font-weight: 600;
+}
+
+/* Matrix header */
+.scheduler_light_matrix {
+  border: 1px solid #e0e0e0;
+}
+
+/* Scrollbar styling */
+.scheduler_light_scrollable::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scheduler_light_scrollable::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.scheduler_light_scrollable::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.scheduler_light_scrollable::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* Selection */
+.scheduler_light_selected {
+  background: rgba(25, 118, 210, 0.15) !important;
+}
+
+/* Today column highlight */
+.scheduler_light_cell_today {
+  background: rgba(25, 118, 210, 0.08);
+}
+
+/* Corner cell */
+.scheduler_light_corner {
+  background: #fff;
+  border-right: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+/* Divider */
+.scheduler_light_divider {
+  background: #e0e0e0;
+}
+
+/* Row header columns */
+.scheduler_light_rowheadercol {
+  background: #f8f9fa;
+  color: #666;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+/* Category row styling */
+.category-row .scheduler_light_rowheader,
+.scheduler_light_rowheader.category-row {
+  background: #f0f0f0 !important;
+  font-weight: 600;
+  color: #333;
+}
+
+/* Current time indicator line */
+.scheduler_light_now {
+  background-color: #ff9800;
+  /* Orange color matching reference */
+  width: 2px !important;
+  z-index: 100;
+  /* Ensure it's on top */
+}
+
+/* Current time header (top indicator) */
+.scheduler_light_now_header {
+  background-color: #ff9800;
+  height: 5px;
+  /* Thin line at the header bottom */
+  position: relative;
+}
+
+/* Add the "tag" look with time if possible, or just the marker */
+.scheduler_light_now_header::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  /* Position above the line */
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid #ff9800;
+  /* Triangle pointing down */
+}

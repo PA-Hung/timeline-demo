@@ -1,0 +1,290 @@
+/* Scheduler Container */
+.scheduler-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #f5f5f5;
+}
+
+/* Status Legend */
+.status-legend {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 16px;
+    background: #fff;
+    border-bottom: 1px solid #e0e0e0;
+    flex-wrap: wrap;
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #333;
+    cursor: pointer;
+}
+
+.status-item:hover {
+    opacity: 0.8;
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+}
+
+.status-name {
+    font-weight: 500;
+}
+
+/* Toolbar */
+.toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: #fff;
+    border-bottom: 1px solid #e0e0e0;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.toolbar-center {
+    display: flex;
+    align-items: center;
+}
+
+.toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Navigation Arrows */
+.nav-arrow {
+    width: 28px;
+    height: 28px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+    color: #666;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.nav-arrow:hover {
+    background: #f0f0f0;
+    border-color: #ccc;
+}
+
+/* Date Picker */
+.date-picker-wrapper {
+    position: relative;
+}
+
+.date-picker-hidden {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.date-display {
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+    color: #333;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.date-display:hover {
+    background: #f5f5f5;
+    border-color: #ccc;
+}
+
+/* View Mode Buttons */
+.view-mode-group {
+    display: flex;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.view-btn {
+    padding: 6px 16px;
+    border: none;
+    border-right: 1px solid #ddd;
+    background: #fff;
+    color: #666;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.view-btn:last-child {
+    border-right: none;
+}
+
+.view-btn:hover {
+    background: #f5f5f5;
+}
+
+.view-btn.active {
+    background: #e8f4fd;
+    color: #1976d2;
+}
+
+/* Filter Buttons */
+.filter-btn {
+    padding: 6px 16px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+    color: #666;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-btn:hover {
+    background: #f5f5f5;
+    border-color: #ccc;
+}
+
+/* Checkbox Label */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #666;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+/* View Icons */
+.view-icons {
+    display: flex;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.icon-btn {
+    width: 32px;
+    height: 28px;
+    border: none;
+    border-right: 1px solid #ddd;
+    background: #fff;
+    color: #666;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.icon-btn:last-child {
+    border-right: none;
+}
+
+.icon-btn:hover {
+    background: #f5f5f5;
+}
+
+.icon-btn.active {
+    background: #1976d2;
+    color: #fff;
+}
+
+/* Scheduler Wrapper */
+.scheduler-wrapper {
+    flex: 1;
+    overflow: hidden;
+    background: #fff;
+}
+
+/* Old styles - kept for compatibility */
+.nav-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.nav-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.nav-btn:hover {
+    background: rgba(255, 255, 255, 0.35);
+    transform: translateY(-2px);
+}
+
+.nav-btn:active {
+    transform: translateY(0);
+}
+
+.today-btn {
+    background: rgba(255, 255, 255, 0.9);
+    color: #667eea;
+}
+
+.today-btn:hover {
+    background: #ffffff;
+}
+
+.date-picker {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+
+.date-btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.95);
+    color: #333;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.date-btn:hover {
+    background: #ffffff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
