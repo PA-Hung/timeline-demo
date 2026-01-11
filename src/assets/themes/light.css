@@ -275,11 +275,12 @@
 }
 
 /* Unassigned booking badge */
-.unassigned-badge {
+/* Unassigned booking badge */
+/* 1. Day View (Tạm thời để giống Week view) */
+.unassigned-badge-day {
   position: absolute;
   top: -2px;
   right: -28px;
-  /* Move outside to the right */
   background-color: #ff0000;
   color: #fff;
   font-size: 10px;
@@ -292,4 +293,43 @@
   justify-content: center;
   padding: 0 4px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}
+
+/* 2. Week View (Vị trí cũ - bên ngoài, lệch phải) */
+.unassigned-badge-week {
+  position: absolute;
+  top: -2px;
+  right: -28px;
+  background-color: #ff0000;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}
+
+/* 3. Month View (Superscript nhỏ với vòng tròn) */
+.unassigned-badge-month {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #ff0000;
+  color: #fff;
+  font-size: 6px;
+  font-weight: 700;
+  min-width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  padding: 0 2px;
+  vertical-align: super;
+  margin-left: 1px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }

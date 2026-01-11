@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { DayPilot, DayPilotScheduler } from "@daypilot/daypilot-lite-react";
-import { Modal, Select, Tag, Space, Typography, DatePicker, ConfigProvider, Checkbox, Button, Form, Input, message } from 'antd';
+import { Modal, Select, Tag, Space, Typography, DatePicker, ConfigProvider, Checkbox, Button, Form, Input, message, Badge } from 'antd';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 import CurrentTimeIndicator from './CurrentTimeIndicator';
@@ -328,6 +328,11 @@ const ReactScheduler = () => {
     setShowAssignmentModal(true);
   };
 
+  // Get unassigned count for current day (for toolbar badge in Day view)
+  const unassignedCountForCurrentDay = useMemo(() => {
+    return getUnassignedBookingsForDate(startDate).length;
+  }, [events, startDate]);
+
   // Assign room to a booking
   const assignRoomToBooking = (bookingId, roomId) => {
     const updatedEvents = events.map(ev => {
@@ -355,12 +360,25 @@ const ReactScheduler = () => {
       const count = unassigned.length;
       if (count > 0) {
         const headerDate = args.header.start.toString("yyyy-MM-dd");
-        args.header.html = `
-          <div style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-            <span>${args.header.text}</span>
-            <span class="unassigned-badge" onclick="window.openAssignmentModal('${headerDate}')" style="cursor: pointer;">${count}</span>
-          </div>
-        `;
+        let badgeClass = 'unassigned-badge-week'; // default to week
+        if (viewMode === 'day') badgeClass = 'unassigned-badge-day';
+        if (viewMode === 'month') badgeClass = 'unassigned-badge-month';
+
+        // Month view: badge as superscript, other views: badge positioned absolutely
+        if (viewMode === 'month') {
+          args.header.html = `
+            <span style="position: relative;">
+              ${args.header.text}<sup class="${badgeClass}" onclick="window.openAssignmentModal('${headerDate}')" style="cursor: pointer;">${count}</sup>
+            </span>
+          `;
+        } else {
+          args.header.html = `
+            <div style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+              <span>${args.header.text}</span>
+              <span class="${badgeClass}" onclick="window.openAssignmentModal('${headerDate}')" style="cursor: pointer;">${count}</span>
+            </div>
+          `;
+        }
       }
     }
   };
@@ -448,16 +466,13 @@ const ReactScheduler = () => {
       { id: 13, text: "Le Xu Uyen Le", source: "Trip", start: today.addDays(0), end: today.addDays(3), resource: "R9", backColor: "#f0c000", status: "Đã đặt" },
       { id: 14, text: "Nguyen Thi Tuyet Mai", source: "Tera", start: today.addDays(4), end: today.addDays(7), resource: "R9", backColor: "#4caf50", status: "Có khách" },
 
-      // Unassigned bookings (chưa gán phòng) - hardcode for dates 10, 11, 12
-      // Ngày 10/01 - 2 bookings
-      { id: 101, text: "Booking A - Chưa gán phòng", source: "Tera", start: today, end: today.addDays(1), resource: null, backColor: "#ff9800", status: "Chưa gán" },
-      { id: 102, text: "Booking B - Chưa gán phòng", source: "Trip", start: today, end: today.addDays(1), resource: null, backColor: "#ff9800", status: "Chưa gán" },
-      // Ngày 11/01 - 2 bookings
+      // Unassigned bookings (chưa gán phòng)
+      // Ngày 12/01 - 3 bookings
+      { id: 101, text: "Booking A - Chưa gán phòng", source: "Tera", start: today.addDays(1), end: today.addDays(2), resource: null, backColor: "#ff9800", status: "Chưa gán" },
+      { id: 102, text: "Booking B - Chưa gán phòng", source: "Trip", start: today.addDays(1), end: today.addDays(2), resource: null, backColor: "#ff9800", status: "Chưa gán" },
       { id: 103, text: "Booking C - Chưa gán phòng", source: "Tera", start: today.addDays(1), end: today.addDays(2), resource: null, backColor: "#ff9800", status: "Chưa gán" },
-      { id: 104, text: "Booking D - Chưa gán phòng", source: "Trip", start: today.addDays(1), end: today.addDays(2), resource: null, backColor: "#ff9800", status: "Chưa gán" },
-      // Ngày 12/01 - 2 bookings
-      { id: 105, text: "Booking E - Chưa gán phòng", source: "Tera", start: today.addDays(2), end: today.addDays(3), resource: null, backColor: "#ff9800", status: "Chưa gán" },
-      { id: 106, text: "Booking F - Chưa gán phòng", source: "Trip", start: today.addDays(2), end: today.addDays(3), resource: null, backColor: "#ff9800", status: "Chưa gán" },
+      // Ngày 13/01 - 1 booking
+      { id: 104, text: "Booking D - Chưa gán phòng", source: "Trip", start: today.addDays(2), end: today.addDays(3), resource: null, backColor: "#ff9800", status: "Chưa gán" },
     ];
     setEvents(sampleEvents);
     // Tạo deep copy cho backup (DayPilot có thể mutate events state)
@@ -595,6 +610,16 @@ const ReactScheduler = () => {
               Tháng
             </Button>
           </Space.Compact>
+
+          {/* Badge for Day view - shown next to view buttons */}
+          {viewMode === 'day' && unassignedCountForCurrentDay > 0 && (
+            <Badge
+              count={unassignedCountForCurrentDay}
+              style={{ marginLeft: 8, cursor: 'pointer' }}
+              onClick={() => handleBadgeClick(startDate.toString("yyyy-MM-dd"))}
+              title="Booking chưa gán phòng"
+            />
+          )}
         </div>
 
         <div className="toolbar-right">
