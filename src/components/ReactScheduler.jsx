@@ -1,5 +1,8 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { DayPilot, DayPilotScheduler } from "@daypilot/daypilot-lite-react";
+import { Modal, Select, Tag, Space, Typography, DatePicker, ConfigProvider, Checkbox, Button, Form, Input, message } from 'antd';
+import dayjs from 'dayjs';
+import 'dayjs/locale/vi';
 import CurrentTimeIndicator from './CurrentTimeIndicator';
 import "../assets/themes/light.css";
 import "../assets/toolbar.css";
@@ -15,7 +18,7 @@ const ReactScheduler = () => {
   const [cellWidth, setCellWidth] = useState(120);
   const [theme, setTheme] = useState("scheduler_light");
   const [isToday, setIsToday] = useState(true);
-  
+
   const containerRef = useRef(null);
 
   // Backup ref để lưu deep copy của events (DayPilot có thể mutate trực tiếp)
@@ -27,6 +30,21 @@ const ReactScheduler = () => {
   const [expandedCategories, setExpandedCategories] = useState({
     G1: true, G2: true, G3: true, G4: true, G5: true
   });
+
+  // State cho popup gán phòng
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [unassignedForDate, setUnassignedForDate] = useState([]);
+
+  // State cho edit event modal
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
+  const [editForm] = Form.useForm();
+
+  // State cho create event modal
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [pendingEvent, setPendingEvent] = useState(null);
+  const [createForm] = Form.useForm();
 
   // Status configuration
   const statuses = [
@@ -80,8 +98,9 @@ const ReactScheduler = () => {
       const isExpanded = expandedCategories[cat.id];
       result.push({
         id: cat.id,
-        name: `${isExpanded ? '▼' : '▸'} ${cat.name}`,
+        name: cat.name,
         isCategory: true,
+        isExpanded: isExpanded,
         cssClass: "category-row"
       });
       if (isExpanded) {
@@ -139,26 +158,50 @@ const ReactScheduler = () => {
     });
   };
 
-  const editEvent = async (e) => {
-    const form = [
-      { name: "Tên khách", id: "text" },
-      { name: "Nguồn", id: "source" },
-      { name: "Check-in", id: "start", type: "datetime" },
-      { name: "Check-out", id: "end", type: "datetime" },
-      { name: "Phòng", id: "resource", type: "select", options: allRooms },
-      { name: "Trạng thái", id: "status", type: "select", options: statuses.map(s => ({ name: s.name, id: s.name })) }
-    ];
-
-    const modal = await DayPilot.Modal.form(form, e.data);
-    if (modal.canceled) return;
-
-    const status = statuses.find(s => s.name === modal.result.status);
-    modal.result.backColor = status?.color || "#f0c000";
-    modal.result.fontColor = status?.textColor || "#333";
-    scheduler.events.update(modal.result);
+  // Open edit modal with Ant Design
+  const openEditModal = (e) => {
+    const eventData = e.data;
+    setEditingEvent(eventData);
+    editForm.setFieldsValue({
+      text: eventData.text,
+      source: eventData.source,
+      start: dayjs(eventData.start.toString ? eventData.start.toString() : eventData.start),
+      end: dayjs(eventData.end.toString ? eventData.end.toString() : eventData.end),
+      resource: eventData.resource,
+      status: eventData.status
+    });
+    setShowEditModal(true);
   };
 
-  const onTimeRangeSelected = async (args) => {
+  // Handle edit form submit
+  const handleEditSubmit = (values) => {
+    const status = statuses.find(s => s.name === values.status);
+    const updatedEvent = {
+      ...editingEvent,
+      text: values.text,
+      source: values.source,
+      start: values.start.format("YYYY-MM-DDTHH:mm:ss"),
+      end: values.end.format("YYYY-MM-DDTHH:mm:ss"),
+      resource: values.resource,
+      status: values.status,
+      backColor: status?.color || "#f0c000",
+      fontColor: status?.textColor || "#333"
+    };
+
+    scheduler.events.update(updatedEvent);
+
+    // Update backup
+    const newEvents = eventsBackupRef.current.map(ev =>
+      ev.id === updatedEvent.id ? updatedEvent : ev
+    );
+    eventsBackupRef.current = JSON.parse(JSON.stringify(newEvents));
+    setEvents(newEvents);
+
+    setShowEditModal(false);
+    message.success('Đã cập nhật booking!');
+  };
+
+  const onTimeRangeSelected = (args) => {
     const ctrl = args.control;
 
     // Block event creation on category rows
@@ -170,31 +213,45 @@ const ReactScheduler = () => {
     // Kiểm tra overlap trước khi tạo event
     if (hasOverlappingEvent(args.resource, args.start, args.end)) {
       ctrl.clearSelection();
-      DayPilot.Modal.alert("❌ Phòng này đã có khách trong khoảng thời gian này!");
+      message.error("❌ Phòng này đã có khách trong khoảng thời gian này!");
       return;
     }
 
-    const modal = await DayPilot.Modal.prompt("Tên khách:", "Khách mới");
-    ctrl.clearSelection();
-    if (modal.canceled) return;
-
-    const newEvent = {
+    // Store pending event info and open create modal
+    setPendingEvent({
       start: args.start,
       end: args.end,
-      id: DayPilot.guid(),
       resource: args.resource,
-      text: modal.result,
+      control: ctrl
+    });
+    createForm.setFieldsValue({ text: 'Khách mới' });
+    setShowCreateModal(true);
+    ctrl.clearSelection();
+  };
+
+  // Handle create form submit
+  const handleCreateSubmit = (values) => {
+    const newEvent = {
+      start: pendingEvent.start,
+      end: pendingEvent.end,
+      id: DayPilot.guid(),
+      resource: pendingEvent.resource,
+      text: values.text,
       source: "Direct",
       status: "Đã đặt",
       backColor: "#f0c000",
       fontColor: "#333"
     };
 
-    ctrl.events.add(newEvent);
+    scheduler.events.add(newEvent);
 
     // Cập nhật backup
     const updatedEvents = [...eventsBackupRef.current, newEvent];
     eventsBackupRef.current = JSON.parse(JSON.stringify(updatedEvents));
+    setEvents(updatedEvents);
+
+    setShowCreateModal(false);
+    message.success('Đã tạo booking mới!');
   };
 
   const onBeforeEventRender = (args) => {
@@ -214,8 +271,8 @@ const ReactScheduler = () => {
         fontColor: "#666666",
         padding: 3,
         visibility: "Hover",
-        onClick: async (args) => {
-          await editEvent(args.source);
+        onClick: (args) => {
+          openEditModal(args.source);
         }
       }
     ];
@@ -223,26 +280,70 @@ const ReactScheduler = () => {
 
   // Xử lý trước khi render row để style category
   const onBeforeRowHeaderRender = (args) => {
+    const resource = resources.find(r => r.id === args.row.id);
+
     // Tô màu header cho category rows
-    if (isParentResource(args.row.id)) {
+    if (resource?.isCategory) {
       args.row.backColor = "#f5f5f5";
       args.row.fontColor = "#333";
-      args.row.fontBold = true;
+
+      // Ant Design style collapse icon (CaretRight/CaretDown)
+      const isExpanded = resource.isExpanded;
+      const iconSvg = isExpanded
+        ? `<svg viewBox="0 0 1024 1024" width="12" height="12" fill="#1677ff" style="margin-right: 8px; transition: transform 0.2s;">
+             <path d="M840.4 300H183.6c-19.7 0-30.7 20.8-18.5 35l328.4 380.8c9.4 10.9 27.5 10.9 37 0L840.4 335c12.2-14.2 1.2-35-18.5-35z"/>
+           </svg>`
+        : `<svg viewBox="0 0 1024 1024" width="12" height="12" fill="#1677ff" style="margin-right: 8px; transition: transform 0.2s;">
+             <path d="M715.8 493.5L335 165.1c-14.2-12.2-35-1.2-35 18.5v656.8c0 19.7 20.8 30.7 35 18.5l380.8-328.4c10.9-9.4 10.9-27.6 0-37z"/>
+           </svg>`;
+
+      args.row.html = `
+        <div style="display: flex; align-items: center; font-weight: 600; cursor: pointer; padding: 0 8px;">
+          ${iconSvg}
+          <span>${args.row.name}</span>
+        </div>
+      `;
     }
   };
 
-  // Count unassigned bookings for a specific date
+  // Get unassigned bookings for a specific date (returns array)
   const getUnassignedBookingsForDate = (date) => {
     const dayStart = new DayPilot.Date(date).getDatePart();
     const dayEnd = dayStart.addDays(1);
-    
+
     return events.filter(event => {
       const eventStart = new DayPilot.Date(event.start);
       const eventEnd = new DayPilot.Date(event.end);
-      
+
       // Check if event has no resource (unassigned) and overlaps with this date
       return !event.resource && eventStart < dayEnd && eventEnd > dayStart;
-    }).length;
+    });
+  };
+
+  // Handle badge click to open assignment popup
+  const handleBadgeClick = (date) => {
+    const unassigned = getUnassignedBookingsForDate(date);
+    setSelectedDate(date);
+    setUnassignedForDate(unassigned);
+    setShowAssignmentModal(true);
+  };
+
+  // Assign room to a booking
+  const assignRoomToBooking = (bookingId, roomId) => {
+    const updatedEvents = events.map(ev => {
+      if (ev.id === bookingId) {
+        return { ...ev, resource: roomId };
+      }
+      return ev;
+    });
+    setEvents(updatedEvents);
+    eventsBackupRef.current = JSON.parse(JSON.stringify(updatedEvents));
+    // Update unassigned list for current date
+    const newUnassigned = unassignedForDate.filter(b => b.id !== bookingId);
+    setUnassignedForDate(newUnassigned);
+    if (newUnassigned.length === 0) {
+      setShowAssignmentModal(false);
+    }
   };
 
   // Customize time header rendering to add unassigned booking badge
@@ -250,12 +351,14 @@ const ReactScheduler = () => {
     // In Day view: level 0 is the day header (e.g., "Sunday 11/01")
     // In Week/Month view: level 0 is also the day header (e.g., "Sun 11")
     if (args.header.level === 0 || (viewMode === 'day' && args.header.level === 0)) {
-      const count = getUnassignedBookingsForDate(args.header.start);
+      const unassigned = getUnassignedBookingsForDate(args.header.start);
+      const count = unassigned.length;
       if (count > 0) {
+        const headerDate = args.header.start.toString("yyyy-MM-dd");
         args.header.html = `
           <div style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
             <span>${args.header.text}</span>
-            <span class="unassigned-badge">${count}</span>
+            <span class="unassigned-badge" onclick="window.openAssignmentModal('${headerDate}')" style="cursor: pointer;">${count}</span>
           </div>
         `;
       }
@@ -275,7 +378,7 @@ const ReactScheduler = () => {
 
   const scrollToToday = () => {
     const now = new DayPilot.Date();
-    
+
     // Always set startDate to today for date picker display
     setStartDate(now);
     setIsToday(true);
@@ -344,7 +447,7 @@ const ReactScheduler = () => {
       { id: 12, text: "Hen Nguyen", source: "Trip", start: today.addDays(1), end: today.addDays(5), resource: "R8", backColor: "#4caf50", status: "Có khách" },
       { id: 13, text: "Le Xu Uyen Le", source: "Trip", start: today.addDays(0), end: today.addDays(3), resource: "R9", backColor: "#f0c000", status: "Đã đặt" },
       { id: 14, text: "Nguyen Thi Tuyet Mai", source: "Tera", start: today.addDays(4), end: today.addDays(7), resource: "R9", backColor: "#4caf50", status: "Có khách" },
-      
+
       // Unassigned bookings (chưa gán phòng) - hardcode for dates 10, 11, 12
       // Ngày 10/01 - 2 bookings
       { id: 101, text: "Booking A - Chưa gán phòng", source: "Tera", start: today, end: today.addDays(1), resource: null, backColor: "#ff9800", status: "Chưa gán" },
@@ -373,20 +476,20 @@ const ReactScheduler = () => {
         const availableWidth = containerWidth - 120;
 
         if (viewMode === "week") {
-            const newCellWidth = Math.floor(availableWidth / 7);
-            // Ensure not too small
-            setCellWidth(Math.max(50, newCellWidth));
+          const newCellWidth = Math.floor(availableWidth / 7);
+          // Ensure not too small
+          setCellWidth(Math.max(50, newCellWidth));
         } else if (viewMode === "day") {
-            // Day view: 24 hours fit to screen
-            const newCellWidth = Math.floor(availableWidth / 24);
-             // Ensure not too small
-            setCellWidth(Math.max(20, newCellWidth));
+          // Day view: 24 hours fit to screen
+          const newCellWidth = Math.floor(availableWidth / 24);
+          // Ensure not too small
+          setCellWidth(Math.max(20, newCellWidth));
         } else if (viewMode === "month") {
-             // Month view: fit all days to screen
-             const newCellWidth = Math.floor(availableWidth / days);
-             setCellWidth(Math.max(20, newCellWidth));
+          // Month view: fit all days to screen
+          const newCellWidth = Math.floor(availableWidth / days);
+          setCellWidth(Math.max(20, newCellWidth));
         } else {
-             setCellWidth(120); 
+          setCellWidth(120);
         }
       }
     };
@@ -410,12 +513,22 @@ const ReactScheduler = () => {
 
     // Update immediately
     updateTimeLabel();
-    
+
     // Update every minute
     const interval = setInterval(updateTimeLabel, 60000);
-    
+
     return () => clearInterval(interval);
   }, [scheduler]);
+
+  // Expose function to window for badge onclick
+  useEffect(() => {
+    window.openAssignmentModal = (date) => {
+      handleBadgeClick(date);
+    };
+    return () => {
+      delete window.openAssignmentModal;
+    };
+  }, [events]);
 
   return (
     <div className="scheduler-container" ref={containerRef}>
@@ -435,72 +548,57 @@ const ReactScheduler = () => {
       {/* Toolbar */}
       <div className="toolbar">
         <div className="toolbar-left">
-          <button className="nav-arrow" onClick={navigatePrevious}>‹</button>
-          <div className="date-picker-wrapper">
-            <input
-              type="date"
-              id="datePicker"
-              className="date-picker-hidden"
-              value={startDate.toString("yyyy-MM-dd")}
-              onChange={(e) => {
-                if (e.target.value) {
-                  const newDate = new DayPilot.Date(e.target.value);
+          <Button type="text" onClick={navigatePrevious} style={{ fontSize: '18px', padding: '4px 8px' }}>‹</Button>
+          <ConfigProvider locale={{ locale: 'vi' }}>
+            <DatePicker
+              value={dayjs(startDate.toString("yyyy-MM-dd"))}
+              format="DD/MM/YYYY"
+              onChange={(date) => {
+                if (date) {
+                  const newDate = new DayPilot.Date(date.format("YYYY-MM-DD"));
                   setStartDate(newDate);
+                  setIsToday(false);
                   scheduler?.scrollTo(newDate);
                 }
               }}
+              allowClear={false}
+              style={{ width: 140 }}
             />
-            <button
-              className="date-display"
-              onClick={() => document.getElementById('datePicker').showPicker()}
-            >
-              📅 {startDate.toString("dd/MM/yyyy")}
-            </button>
-          </div>
-          <button className="nav-arrow" onClick={navigateNext}>›</button>
+          </ConfigProvider>
+          <Button type="text" onClick={navigateNext} style={{ fontSize: '18px', padding: '4px 8px' }}>›</Button>
         </div>
 
         <div className="toolbar-center">
-          <div className="view-mode-group">
-            <button
-              className={`view-btn ${isToday ? 'active' : ''}`}
+          <Space.Compact>
+            <Button
+              type={isToday ? 'primary' : 'default'}
               onClick={scrollToToday}
             >
               Hôm nay
-            </button>
-            <button
-              className={`view-btn ${viewMode === 'day' ? 'active' : ''}`}
+            </Button>
+            <Button
+              type={viewMode === 'day' ? 'primary' : 'default'}
               onClick={() => changeViewMode('day')}
             >
               Ngày
-            </button>
-            <button
-              className={`view-btn ${viewMode === 'week' ? 'active' : ''}`}
+            </Button>
+            <Button
+              type={viewMode === 'week' ? 'primary' : 'default'}
               onClick={() => changeViewMode('week')}
             >
               Tuần
-            </button>
-            <button
-              className={`view-btn ${viewMode === 'month' ? 'active' : ''}`}
+            </Button>
+            <Button
+              type={viewMode === 'month' ? 'primary' : 'default'}
               onClick={() => changeViewMode('month')}
             >
               Tháng
-            </button>
-          </div>
+            </Button>
+          </Space.Compact>
         </div>
 
         <div className="toolbar-right">
-          <button className="filter-btn">Loại</button>
-          <button className="filter-btn">Phòng</button>
-          <label className="checkbox-label">
-            <input type="checkbox" defaultChecked />
-            Xem ngày
-          </label>
-          <div className="view-icons">
-            <button className="icon-btn active">☰</button>
-            <button className="icon-btn">▤</button>
-            <button className="icon-btn">⊞</button>
-          </div>
+          <Checkbox>Xem ngày</Checkbox>
         </div>
       </div>
 
@@ -622,7 +720,7 @@ const ReactScheduler = () => {
             eventsBackupRef.current = JSON.parse(JSON.stringify(newEvents));
           }}
         />
-        <CurrentTimeIndicator 
+        <CurrentTimeIndicator
           scheduler={scheduler}
           viewMode={viewMode}
           startDate={startDate}
@@ -630,6 +728,140 @@ const ReactScheduler = () => {
           cellWidth={cellWidth}
         />
       </div>
+
+      {/* Room Assignment Modal - Ant Design */}
+      <Modal
+        title={`Gán phòng - ${selectedDate ? new DayPilot.Date(selectedDate).toString("dd/MM/yyyy") : ''}`}
+        open={showAssignmentModal}
+        onCancel={() => setShowAssignmentModal(false)}
+        footer={null}
+        width={520}
+        centered
+      >
+        {unassignedForDate.length === 0 ? (
+          <Typography.Text type="secondary" style={{ display: 'block', textAlign: 'center', padding: '40px 0' }}>
+            Không có booking nào cần gán phòng
+          </Typography.Text>
+        ) : (
+          <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            {unassignedForDate.map(booking => (
+              <div
+                key={booking.id}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px 16px',
+                  background: '#fafafa',
+                  borderRadius: '8px',
+                  border: '1px solid #f0f0f0'
+                }}
+              >
+                <Space direction="vertical" size={2}>
+                  <Typography.Text strong>{booking.text}</Typography.Text>
+                  <Space size="small">
+                    <Tag color="blue">{booking.source}</Tag>
+                    <Typography.Text type="secondary" style={{ fontSize: '12px' }}>
+                      {new DayPilot.Date(booking.start).toString("dd/MM")} - {new DayPilot.Date(booking.end).toString("dd/MM")}
+                    </Typography.Text>
+                  </Space>
+                </Space>
+                <Select
+                  placeholder="Chọn phòng..."
+                  style={{ width: 150 }}
+                  onChange={(value) => assignRoomToBooking(booking.id, value)}
+                  options={categoryData.map(cat => ({
+                    label: cat.name,
+                    options: cat.rooms.map(room => ({
+                      label: room.name,
+                      value: room.id
+                    }))
+                  }))}
+                />
+              </div>
+            ))}
+          </Space>
+        )}
+      </Modal>
+
+      {/* Edit Event Modal */}
+      <Modal
+        title="Chỉnh sửa booking"
+        open={showEditModal}
+        onCancel={() => setShowEditModal(false)}
+        footer={null}
+        width={480}
+        destroyOnClose
+      >
+        <Form
+          form={editForm}
+          layout="vertical"
+          onFinish={handleEditSubmit}
+        >
+          <Form.Item name="text" label="Tên khách" rules={[{ required: true, message: 'Vui lòng nhập tên khách' }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="source" label="Nguồn">
+            <Input />
+          </Form.Item>
+          <Space style={{ width: '100%' }} size="middle">
+            <Form.Item name="start" label="Check-in" style={{ flex: 1 }}>
+              <DatePicker showTime format="DD/MM/YYYY HH:mm" style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="end" label="Check-out" style={{ flex: 1 }}>
+              <DatePicker showTime format="DD/MM/YYYY HH:mm" style={{ width: '100%' }} />
+            </Form.Item>
+          </Space>
+          <Form.Item name="resource" label="Phòng">
+            <Select
+              options={categoryData.map(cat => ({
+                label: cat.name,
+                options: cat.rooms.map(room => ({
+                  label: room.name,
+                  value: room.id
+                }))
+              }))}
+            />
+          </Form.Item>
+          <Form.Item name="status" label="Trạng thái">
+            <Select
+              options={statuses.map(s => ({ label: s.name, value: s.name }))}
+            />
+          </Form.Item>
+          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+            <Space>
+              <Button onClick={() => setShowEditModal(false)}>Hủy</Button>
+              <Button type="primary" htmlType="submit">Lưu</Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Create Event Modal */}
+      <Modal
+        title="Tạo booking mới"
+        open={showCreateModal}
+        onCancel={() => setShowCreateModal(false)}
+        footer={null}
+        width={400}
+        destroyOnClose
+      >
+        <Form
+          form={createForm}
+          layout="vertical"
+          onFinish={handleCreateSubmit}
+        >
+          <Form.Item name="text" label="Tên khách" rules={[{ required: true, message: 'Vui lòng nhập tên khách' }]}>
+            <Input placeholder="Nhập tên khách..." />
+          </Form.Item>
+          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+            <Space>
+              <Button onClick={() => setShowCreateModal(false)}>Hủy</Button>
+              <Button type="primary" htmlType="submit">Tạo booking</Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

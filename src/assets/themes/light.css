@@ -157,7 +157,31 @@
   border: 1px solid #e0e0e0;
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling - Global */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+::-webkit-scrollbar-corner {
+  background: #f1f1f1;
+}
+
+/* DayPilot specific scrollbar */
 .scheduler_light_scrollable::-webkit-scrollbar {
   width: 8px;
   height: 8px;
