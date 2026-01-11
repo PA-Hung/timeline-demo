@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { DayPilot, DayPilotScheduler } from "@daypilot/daypilot-lite-react";
-import { Modal, Select, Tag, Space, Typography, DatePicker, ConfigProvider, Checkbox, Button, Form, Input, message, Badge } from 'antd';
+import { Modal, Select, Tag, Space, Typography, DatePicker, ConfigProvider, Checkbox, Button, Form, Input, message, Badge, Popover, Descriptions } from 'antd';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
 import CurrentTimeIndicator from './CurrentTimeIndicator';
@@ -121,6 +121,13 @@ const ReactScheduler = () => {
   const allRooms = useMemo(() => {
     return categoryData.flatMap(cat => cat.rooms);
   }, []);
+
+  // Helper: Lấy tên phòng từ ID
+  const getRoomNameById = (resourceId) => {
+    if (!resourceId) return null;
+    const room = allRooms.find(r => r.id === resourceId);
+    return room?.name || null;
+  };
 
   // Transform events for display: snap to full days when viewDayOnly is true
   const displayEvents = useMemo(() => {
@@ -289,8 +296,16 @@ const ReactScheduler = () => {
   const onBeforeEventRender = (args) => {
     const source = args.data.source || "";
     const name = args.data.text || "";
+    const roomName = getRoomNameById(args.data.resource) || 'Chưa gán';
+    const startStr = new DayPilot.Date(args.data.start).toString('dd/MM HH:mm');
+    const endStr = new DayPilot.Date(args.data.end).toString('dd/MM HH:mm');
+
     args.data.html = `<span class="event-source">${source}</span> - ${name}`;
     args.data.borderColor = "darker";
+
+    // Native tooltip - mượt mà và nhẹ
+    args.data.toolTip = `${name}\nNguồn: ${source}\nTrạng thái: ${args.data.status || 'N/A'}\nPhòng: ${roomName}\nCheck-in: ${startStr}\nCheck-out: ${endStr}`;
+
     args.data.areas = [
       {
         right: 4,
