@@ -12,12 +12,13 @@ const ReactScheduler = () => {
   const [scheduler, setScheduler] = useState(null);
   const [events, setEvents] = useState([]);
   const [startDate, setStartDate] = useState(DayPilot.Date.today());
-  const [days, setDays] = useState(14);
+  const [days, setDays] = useState(7); // Week view = 7 days
   const [viewMode, setViewMode] = useState("week");
-  const [scale, setScale] = useState("Day"); // "Day" | "CellDuration"
+  const [scale, setScale] = useState("CellDuration"); // Week/Day view dùng CellDuration
   const [cellWidth, setCellWidth] = useState(120);
   const [theme, setTheme] = useState("scheduler_light");
   const [isToday, setIsToday] = useState(true);
+  const [viewDayOnly, setViewDayOnly] = useState(false); // false = xem giờ (chi tiết), true = xem ngày (tổng quan)
 
   const containerRef = useRef(null);
 
@@ -120,6 +121,37 @@ const ReactScheduler = () => {
   const allRooms = useMemo(() => {
     return categoryData.flatMap(cat => cat.rooms);
   }, []);
+
+  // Transform events for display: snap to full days when viewDayOnly is true
+  const displayEvents = useMemo(() => {
+    if (!viewDayOnly) {
+      return events; // Hiển thị đúng giờ thực tế
+    }
+
+    // Snap events to full days: start = 00:00 của ngày, end = 00:00 của ngày tiếp theo
+    return events.map(event => {
+      const startDate = new DayPilot.Date(event.start);
+      const endDate = new DayPilot.Date(event.end);
+
+      // Lấy ngày bắt đầu (00:00:00)
+      const dayStart = startDate.getDatePart();
+
+      // Lấy ngày kết thúc: 
+      // - Checkout buổi chiều (> 12:00): bao gồm ngày đó (addDays(1))
+      // - Checkout buổi sáng (<= 12:00): KHÔNG bao gồm ngày đó (vì khách đã đi)
+      // Ví dụ: checkout 11h ngày 13 → end = ngày 13 (không thêm 1 ngày)
+      //        checkout 14h ngày 13 → end = ngày 14 (để hiển thị full ngày 13)
+      const endDatePart = endDate.getDatePart();
+      const checkoutHour = endDate.getHours();
+      const dayEnd = checkoutHour > 12 ? endDatePart.addDays(1) : endDatePart;
+
+      return {
+        ...event,
+        start: dayStart,
+        end: dayEnd
+      };
+    });
+  }, [events, viewDayOnly]);
 
   // Helper: Kiểm tra resource có phải là parent (category) không
   const isParentResource = (resourceId) => {
@@ -430,15 +462,15 @@ const ReactScheduler = () => {
 
     if (mode === "day") {
       setDays(1);
-      setScale("CellDuration"); // Chuyển sang view theo giờ
+      setScale("CellDuration"); // View theo giờ
     } else if (mode === "week") {
-      setDays(30); // Load 30 ngày để cho phép scroll
-      setScale("Day");
+      setDays(7); // 7 ngày
+      setScale("CellDuration"); // Vẫn dùng CellDuration để có offset giờ
     } else {
-      // Month
+      // Month - cũng dùng CellDuration để có offset giờ như EzCloud
       const daysInMonth = startDate.daysInMonth();
       setDays(daysInMonth);
-      setScale("Day");
+      setScale("CellDuration"); // Month view cũng dùng CellDuration
     }
   };
 
@@ -446,33 +478,34 @@ const ReactScheduler = () => {
     const today = DayPilot.Date.today();
 
     // Sample events (đảm bảo không trùng thời gian trong cùng room)
+    // Check-in: 13:00, Check-out: 11:00
     const sampleEvents = [
       // Room R1 (30.46) - không trùng
-      { id: 1, text: "Nguyen Thi Tuyet Mai", source: "Tera", start: today.addDays(-3), end: today.addDays(0), resource: "R1", backColor: "#f0c000", status: "Đã đặt" },
-      { id: 2, text: "Nguyen Huynh Sang", source: "Tera", start: today.addDays(1), end: today.addDays(3), resource: "R1", backColor: "#f0c000", status: "Đã đặt" },
-      { id: 3, text: "Vo Thi Thanh Ngoc", source: "Tera", start: today.addDays(4), end: today.addDays(7), resource: "R1", backColor: "#f0c000", status: "Đã đặt" },
+      { id: 1, text: "Nguyen Thi Tuyet Mai", source: "Tera", start: today.addDays(-3).addHours(13), end: today.addDays(0).addHours(11), resource: "R1", backColor: "#f0c000", status: "Đã đặt" },
+      { id: 2, text: "Nguyen Huynh Sang", source: "Tera", start: today.addDays(1).addHours(13), end: today.addDays(3).addHours(11), resource: "R1", backColor: "#f0c000", status: "Đã đặt" },
+      { id: 3, text: "Vo Thi Thanh Ngoc", source: "Tera", start: today.addDays(4).addHours(13), end: today.addDays(7).addHours(11), resource: "R1", backColor: "#f0c000", status: "Đã đặt" },
       // Room R2 (11.10*) - không trùng
-      { id: 4, text: "Lo Sugiarto", source: "Tera", start: today.addDays(-3), end: today.addDays(-1), resource: "R2", backColor: "#f0c000", status: "Đã đặt" },
-      { id: 5, text: "Le Huynh Duc", source: "Tera", start: today.addDays(0), end: today.addDays(2), resource: "R2", backColor: "#f0c000", status: "Đã đặt" },
-      { id: 6, text: "Le Uyen", source: "Tera", start: today.addDays(2), end: today.addDays(4), resource: "R2", backColor: "#f0c000", status: "Đã đặt" },
-      { id: 7, text: "Huynh Tan Loc", source: "Tera", start: today.addDays(5), end: today.addDays(8), resource: "R2", backColor: "#f0c000", status: "Đã đặt" },
+      { id: 4, text: "Lo Sugiarto", source: "Tera", start: today.addDays(-3).addHours(13), end: today.addDays(-1).addHours(11), resource: "R2", backColor: "#f0c000", status: "Đã đặt" },
+      { id: 5, text: "Le Huynh Duc", source: "Tera", start: today.addDays(-1).addHours(13), end: today.addDays(2).addHours(11), resource: "R2", backColor: "#f0c000", status: "Đã đặt" },
+      { id: 6, text: "Le Uyen", source: "Tera", start: today.addDays(2).addHours(13), end: today.addDays(4).addHours(11), resource: "R2", backColor: "#f0c000", status: "Đã đặt" },
+      { id: 7, text: "Huynh Tan Loc", source: "Tera", start: today.addDays(5).addHours(13), end: today.addDays(8).addHours(11), resource: "R2", backColor: "#f0c000", status: "Đã đặt" },
       // Room R3, R4
-      { id: 8, text: "Mr Vuong", source: "Sellers", start: today.addDays(-3), end: today.addDays(-1), resource: "R3", backColor: "#f0c000", status: "Đã đặt" },
-      { id: 9, text: "Han Van", source: "Tera", start: today.addDays(-3), end: today.addDays(-1), resource: "R4", backColor: "#f0c000", status: "Đã đặt" },
-      { id: 10, text: "Le Quoc Tuan", source: "Tera", start: today.addDays(0), end: today.addDays(2), resource: "R4", backColor: "#f0c000", status: "Đã đặt" },
-      { id: 11, text: "Trong Thuy - Guest", source: "Trong Thuy", start: today.addDays(2), end: today.addDays(5), resource: "R4", backColor: "#f0c000", status: "Đã đặt" },
+      { id: 8, text: "Mr Vuong", source: "Sellers", start: today.addDays(-3).addHours(13), end: today.addDays(-1).addHours(11), resource: "R3", backColor: "#f0c000", status: "Đã đặt" },
+      { id: 9, text: "Han Van", source: "Tera", start: today.addDays(-3).addHours(13), end: today.addDays(-1).addHours(11), resource: "R4", backColor: "#f0c000", status: "Đã đặt" },
+      { id: 10, text: "Le Quoc Tuan", source: "Tera", start: today.addDays(-1).addHours(13), end: today.addDays(2).addHours(11), resource: "R4", backColor: "#f0c000", status: "Đã đặt" },
+      { id: 11, text: "Trong Thuy - Guest", source: "Trong Thuy", start: today.addDays(2).addHours(13), end: today.addDays(5).addHours(11), resource: "R4", backColor: "#f0c000", status: "Đã đặt" },
       // Room R8, R9
-      { id: 12, text: "Hen Nguyen", source: "Trip", start: today.addDays(1), end: today.addDays(5), resource: "R8", backColor: "#4caf50", status: "Có khách" },
-      { id: 13, text: "Le Xu Uyen Le", source: "Trip", start: today.addDays(0), end: today.addDays(3), resource: "R9", backColor: "#f0c000", status: "Đã đặt" },
-      { id: 14, text: "Nguyen Thi Tuyet Mai", source: "Tera", start: today.addDays(4), end: today.addDays(7), resource: "R9", backColor: "#4caf50", status: "Có khách" },
+      { id: 12, text: "Hen Nguyen", source: "Trip", start: today.addDays(1).addHours(13), end: today.addDays(5).addHours(11), resource: "R8", backColor: "#4caf50", status: "Có khách" },
+      { id: 13, text: "Le Xu Uyen Le", source: "Trip", start: today.addDays(0).addHours(13), end: today.addDays(3).addHours(11), resource: "R9", backColor: "#f0c000", status: "Đã đặt" },
+      { id: 14, text: "Nguyen Thi Tuyet Mai", source: "Tera", start: today.addDays(4).addHours(13), end: today.addDays(7).addHours(11), resource: "R9", backColor: "#4caf50", status: "Có khách" },
 
       // Unassigned bookings (chưa gán phòng)
       // Ngày 12/01 - 3 bookings
-      { id: 101, text: "Booking A - Chưa gán phòng", source: "Tera", start: today.addDays(1), end: today.addDays(2), resource: null, backColor: "#ff9800", status: "Chưa gán" },
-      { id: 102, text: "Booking B - Chưa gán phòng", source: "Trip", start: today.addDays(1), end: today.addDays(2), resource: null, backColor: "#ff9800", status: "Chưa gán" },
-      { id: 103, text: "Booking C - Chưa gán phòng", source: "Tera", start: today.addDays(1), end: today.addDays(2), resource: null, backColor: "#ff9800", status: "Chưa gán" },
+      { id: 101, text: "Booking A - Chưa gán phòng", source: "Tera", start: today.addDays(1).addHours(13), end: today.addDays(2).addHours(11), resource: null, backColor: "#ff9800", status: "Chưa gán" },
+      { id: 102, text: "Booking B - Chưa gán phòng", source: "Trip", start: today.addDays(1).addHours(13), end: today.addDays(2).addHours(11), resource: null, backColor: "#ff9800", status: "Chưa gán" },
+      { id: 103, text: "Booking C - Chưa gán phòng", source: "Tera", start: today.addDays(1).addHours(13), end: today.addDays(2).addHours(11), resource: null, backColor: "#ff9800", status: "Chưa gán" },
       // Ngày 13/01 - 1 booking
-      { id: 104, text: "Booking D - Chưa gán phòng", source: "Trip", start: today.addDays(2), end: today.addDays(3), resource: null, backColor: "#ff9800", status: "Chưa gán" },
+      { id: 104, text: "Booking D - Chưa gán phòng", source: "Trip", start: today.addDays(2).addHours(13), end: today.addDays(3).addHours(11), resource: null, backColor: "#ff9800", status: "Chưa gán" },
     ];
     setEvents(sampleEvents);
     // Tạo deep copy cho backup (DayPilot có thể mutate events state)
@@ -491,18 +524,24 @@ const ReactScheduler = () => {
         const availableWidth = containerWidth - 120;
 
         if (viewMode === "week") {
-          const newCellWidth = Math.floor(availableWidth / 7);
-          // Ensure not too small
-          setCellWidth(Math.max(50, newCellWidth));
+          // Week view với CellDuration: 7 ngày x 24 giờ = 168 cells
+          // Mỗi ngày chiếm 1 phần 7 của màn hình, mỗi giờ thì thu nhỏ hơn
+          const cellsPerDay = 24;
+          const visibleDays = 7;
+          const dayWidth = Math.floor(availableWidth / visibleDays);
+          const newCellWidth = Math.floor(dayWidth / cellsPerDay);
+          setCellWidth(Math.max(5, newCellWidth)); // Minimum 5px per hour
         } else if (viewMode === "day") {
           // Day view: 24 hours fit to screen
           const newCellWidth = Math.floor(availableWidth / 24);
           // Ensure not too small
           setCellWidth(Math.max(20, newCellWidth));
         } else if (viewMode === "month") {
-          // Month view: fit all days to screen
-          const newCellWidth = Math.floor(availableWidth / days);
-          setCellWidth(Math.max(20, newCellWidth));
+          // Month view với CellDuration: days ngày x 24 giờ
+          const cellsPerDay = 24;
+          const dayWidth = Math.floor(availableWidth / days);
+          const newCellWidth = Math.floor(dayWidth / cellsPerDay);
+          setCellWidth(Math.max(2, newCellWidth)); // Minimum 2px per hour cho month
         } else {
           setCellWidth(120);
         }
@@ -623,7 +662,12 @@ const ReactScheduler = () => {
         </div>
 
         <div className="toolbar-right">
-          <Checkbox>Xem ngày</Checkbox>
+          <Checkbox
+            checked={viewDayOnly}
+            onChange={(e) => setViewDayOnly(e.target.checked)}
+          >
+            Xem ngày
+          </Checkbox>
         </div>
       </div>
 
@@ -634,7 +678,7 @@ const ReactScheduler = () => {
           scale={scale}
           timeHeaders={viewMode === "day" ? [
             { groupBy: "Day", format: "dddd dd/MM" },
-            { groupBy: "Hour" }
+            { groupBy: "Hour", format: "H" }
           ] : [
             { groupBy: "Day", format: "ddd dd" }
           ]}
@@ -643,7 +687,7 @@ const ReactScheduler = () => {
           cellWidth={cellWidth}
           eventHeight={30}
           rowHeaderWidth={120}
-          events={events}
+          events={displayEvents}
           resources={resources}
           onBeforeEventRender={onBeforeEventRender}
           onBeforeRowHeaderRender={onBeforeRowHeaderRender}
